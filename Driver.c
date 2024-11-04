@@ -20,7 +20,7 @@ void create(int userId, const char* name, double initialBalance) {
         char filename[20];
         snprintf(filename, sizeof(filename), "%d.txt", userId);
 
-        //Open file
+        //Open account file
         FILE* accountFile = fopen(filename, "w");
         if (accountFile == NULL) {
             fprintf(stderr, "Error creating file for user ID %d.\n", userId);
