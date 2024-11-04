@@ -41,6 +41,7 @@ void create(int userId, const char* name, double initialBalance) {
 }
 
 // not needed but Inquiry: just used to test code
+/*
 void Inquiry(int userId) {
     char filename[20];
     snprintf(filename, sizeof(filename), "%d.txt", userId);
@@ -54,15 +55,17 @@ void Inquiry(int userId) {
     } else {
         fprintf(stderr, "Error reading file for user ID %d.\n", userId);
     }
+    */
 }
 
 int main() {
     
    // tests to check if it works
+   /*
     create(1, "Alice", 1000.0);
     create(2, "Bob", 500.0);
     Inquiry(1);
     Inquiry(2);
-
+    */
     return 0;
 }
