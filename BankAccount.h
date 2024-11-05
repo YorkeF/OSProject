@@ -13,6 +13,7 @@ class BankAccount
     private:
         int balance;
         mutex accountLock;
+        mutex queueLock;
         condition_variable balanceCV;
         queue<int> entryQueue;
 
