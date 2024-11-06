@@ -3,10 +3,45 @@
 #include <string.h>
 #include <ctype.h>
 
+#include "SharedMemory.h"
+
+
+void deposit(const char *accountId, double amount, SharedMemorySegment *shm_ptr);
+void withdraw(const char *accountId, double amount, SharedMemorySegment *shm_ptr);
+void inquiry(const char *accountId, SharedMemorySegment *shm_ptr);
+void transfer(const char *fromAccountId, double amount, const char *toAccountId, SharedMemorySegment *shm_ptr);
+
+
+
+void recordTransaction(const char *type, const char *accountId, double amount, const char *status, const char *reason, SharedMemorySegment *shm_ptr) {
+    TransactionRecord record;
+    strcpy(record.transaction_type, type);
+    strcpy(record.account_id, accountId);
+    record.amount = amount;
+    strcpy(record.status, status);
+    strcpy(record.reason, reason);
+
+    // Get current timestamp
+    time_t now = time(NULL);
+    strftime(record.timestamp, sizeof(record.timestamp), "%Y-%m-%d %H:%M:%S", localtime(&now));
+
+    // Critical Section Start
+    pthread_mutex_lock(&(shm_ptr->mutex));
+
+    // Write to shared memory
+    int idx = shm_ptr->transaction_count;
+    shm_ptr->records[idx] = record;
+    shm_ptr->transaction_count++;
+
+    pthread_mutex_unlock(&(shm_ptr->mutex));
+    // Critical Section End
+}
+
+
 // Function to read the balance from an account file
-double getBalance(const char *accountName) {
+double getBalance(const char *accountId, SharedMemorySegment *shm_ptr) {
     char filename[30];
-    snprintf(filename, sizeof(filename), "%s.txt", accountName);
+    snprintf(filename, sizeof(filename), "%s.txt", accountId);
 
     FILE *file = fopen(filename, "r");
     if (file == NULL) {
@@ -20,9 +55,9 @@ double getBalance(const char *accountName) {
 }
 
 // Function to update the balance in the file
-void updateBalance(const char *accountName, double newBalance) {
+void updateBalance(const char *accountId, double newBalance, SharedMemorySegment *shm_ptr) {
     char filename[30];
-    snprintf(filename, sizeof(filename), "%s.txt", accountName);
+    snprintf(filename, sizeof(filename), "%s.txt", accountId);
 
     FILE *file = fopen(filename, "w");
     
@@ -36,19 +71,28 @@ void updateBalance(const char *accountName, double newBalance) {
 }
 
 // Function to handle deposits
-void deposit(const char *filename, double amount) {
-    double balance = getBalance(filename);
-    
-    if (balance < 0) return;
-    
+void deposit(const char *accountId, double amount, SharedMemorySegment *shm_ptr) {
+    double balance = getBalance(accountId, shm_ptr);
+
+    if (balance < 0) {
+        // Record failure in shared memory
+        recordTransaction("DEPOSIT", accountId, amount, "FAILED", "Account not found", shm_ptr);
+        return;
+    }
+
     balance += amount;
-    updateBalance(filename, balance);
+    updateBalance(accountId, balance, shm_ptr);
     printf("Deposit successful. New balance: %.2lf\n", balance);
+
+    // Record success in shared memory
+    recordTransaction("DEPOSIT", accountId, amount, "SUCCESS", "N/A", shm_ptr);
 }
 
+
+
 // Function to handle withdrawals
-void withdraw(const char *filename, double amount) {
-    double balance = getBalance(filename);
+void withdraw(const char *filename, double amount, SharedMemorySegment *shm_ptr) {
+    double balance = getBalance(filename, shm_ptr);
     
     if (balance < 0) return;    //user should not be able to withdraw from a negative account balance
     
@@ -56,21 +100,21 @@ void withdraw(const char *filename, double amount) {
         printf("Insufficient funds. Current balance: %.2lf\n", balance);
     } else {
         balance -= amount;
-        updateBalance(filename, balance);
+        updateBalance(filename, balance, shm_ptr);
         printf("Withdrawal successful. New balance: %.2lf\n", balance);
     }
 }
 
 // Function to inquire about the balance
-void inquiry(const char *filename) {
-    double balance = getBalance(filename);
+void inquiry(const char *filename, SharedMemorySegment *shm_ptr) {
+    double balance = getBalance(filename, shm_ptr);
     printf("Account %s balance: %.2lf\n", filename, balance);
 }
 
 // Function to transfer funds between accounts
-void transfer(const char *fromAccount, double amount, const char *toAccount) {
-    double fromBalance = getBalance(fromAccount);
-    double toBalance = getBalance(toAccount);
+void transfer(const char *fromAccount, double amount, const char *toAccount, SharedMemorySegment *shm_ptr) {
+    double fromBalance = getBalance(fromAccount, shm_ptr);
+    double toBalance = getBalance(toAccount, shm_ptr);
 
     if (fromBalance < 0 || toBalance < 0) return;   //if the transferrring account is negative quit the transfer
 
@@ -84,8 +128,8 @@ void transfer(const char *fromAccount, double amount, const char *toAccount) {
         fromBalance -= amount;
         toBalance += amount;
 
-        updateBalance(fromAccount, fromBalance);
-        updateBalance(toAccount, toBalance);
+        updateBalance(fromAccount, fromBalance, shm_ptr);
+        updateBalance(toAccount, toBalance, shm_ptr);
 
         printf("Transfer successful. %.2lf transferred from %s to %s\n", amount, fromAccount, toAccount);
         printf("New balance for %s: %.2lf\n", fromAccount, fromBalance); // Print new balance for fromAccount
@@ -108,72 +152,72 @@ void trimWhitespace(char *str) {
 }
 
 // Main function
-int main() {
-    char command[50];
-    char account1[20], account2[20];
-    double amount;
-
-    while (1) {
-        printf("Enter command (Exit to quit): ");
-        fgets(command, sizeof(command), stdin);
-        trimWhitespace(command); // Trim whitespace
-
-        // Check for exit command
-        if (strncmp(command, "Exit", 4) == 0) {
-            printf("Exiting program.\n");
-            break;
-        }
-
-        // Tokenize the command using spaces
-        char *token = strtok(command, " ");
-        if (token == NULL) {
-            printf("Invalid command.\n");
-            continue;
-        }
-
-        // First token is the account name
-        strcpy(account1, token);
-
-        // Get the second token for the command type
-        token = strtok(NULL, " ");
-        if (token == NULL) {
-            printf("Invalid command.\n");
-            continue;
-        }
-
-        // Check command type
-        if (strcmp(token, "Withdraw") == 0) {
-            token = strtok(NULL, " ");
-            if (token != NULL) {
-                amount = atof(token);
-                printf("withdrawal function\n");
-                withdraw(account1, amount);
-            }
-        } else if (strcmp(token, "Deposit") == 0) {
-            token = strtok(NULL, " ");
-            if (token != NULL) {
-                amount = atof(token);
-                printf("deposit function\n");
-                deposit(account1, amount);
-            }
-        } else if (strcmp(token, "Inquiry") == 0) {
-            printf("inquiry function\n");
-            inquiry(account1);
-        } else if (strcmp(token, "Transfer") == 0) {
-            token = strtok(NULL, " ");
-            if (token != NULL) {
-                amount = atof(token);
-                token = strtok(NULL, " ");
-                if (token != NULL) {
-                    strcpy(account2, token);
-                    printf("I am going to run the transfer function from: %s, amount: %.2lf, to: %s\n", account1, amount, account2);
-                    transfer(account1, amount, account2);
-                }
-            }
-        } else {
-            printf("Invalid command.\n");
-        }
-    }
-
-    return 0;
-}
+// int main() {
+//     char command[50];
+//     char account1[20], account2[20];
+//     double amount;
+//
+//     while (1) {
+//         printf("Enter command (Exit to quit): ");
+//         fgets(command, sizeof(command), stdin);
+//         trimWhitespace(command); // Trim whitespace
+//
+//         // Check for exit command
+//         if (strncmp(command, "Exit", 4) == 0) {
+//             printf("Exiting program.\n");
+//             break;
+//         }
+//
+//         // Tokenize the command using spaces
+//         char *token = strtok(command, " ");
+//         if (token == NULL) {
+//             printf("Invalid command.\n");
+//             continue;
+//         }
+//
+//         // First token is the account name
+//         strcpy(account1, token);
+//
+//         // Get the second token for the command type
+//         token = strtok(NULL, " ");
+//         if (token == NULL) {
+//             printf("Invalid command.\n");
+//             continue;
+//         }
+//
+//         // Check command type
+//         if (strcmp(token, "Withdraw") == 0) {
+//             token = strtok(NULL, " ");
+//             if (token != NULL) {
+//                 amount = atof(token);
+//                 printf("withdrawal function\n");
+//                 withdraw(account1, amount);
+//             }
+//         } else if (strcmp(token, "Deposit") == 0) {
+//             token = strtok(NULL, " ");
+//             if (token != NULL) {
+//                 amount = atof(token);
+//                 printf("deposit function\n");
+//                 deposit(account1, amount);
+//             }
+//         } else if (strcmp(token, "Inquiry") == 0) {
+//             printf("inquiry function\n");
+//             inquiry(account1);
+//         } else if (strcmp(token, "Transfer") == 0) {
+//             token = strtok(NULL, " ");
+//             if (token != NULL) {
+//                 amount = atof(token);
+//                 token = strtok(NULL, " ");
+//                 if (token != NULL) {
+//                     strcpy(account2, token);
+//                     printf("I am going to run the transfer function from: %s, amount: %.2lf, to: %s\n", account1, amount, account2);
+//                     transfer(account1, amount, account2);
+//                 }
+//             }
+//         } else {
+//             printf("Invalid command.\n");
+//         }
+//     }
+//
+//     return 0;
+// }
