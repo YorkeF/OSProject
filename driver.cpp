@@ -28,64 +28,36 @@ struct User {
     double balance;
 };
 
-void create(int userId, const string& name, double initialBalance, SharedMemorySegment *shm_ptr, int shm_id) {
-    pid_t pid = fork();
-
-    if (pid == 0) {
-        // Child process
-        // Attach to shared memory
-        SharedMemorySegment *child_shm_ptr = (SharedMemorySegment *)shmat(shm_id, NULL, 0);
-        if (child_shm_ptr == (SharedMemorySegment *)-1) {
-            perror("Child shmat");
-            exit(1);
-        }
-
-        // Perform account creation
-        string filename = to_string(userId) + ".txt";
-        ofstream accountFile(filename);
-        if (!accountFile) {
-            cerr << "Error creating file for user ID " << userId << ".\n";
-            exit(1);
-        }
-
-        accountFile << initialBalance;
-        accountFile.close();
-
-        cout << "User " << name << " created with ID " << userId << " and file " << filename << ".\n";
-
-        // Prepare transaction record
-        TransactionRecord record;
-        strcpy(record.transaction_type, "CREATE");
-        strcpy(record.account_id, to_string(userId).c_str());
-        record.amount = initialBalance;
-        strcpy(record.status, "SUCCESS");
-        strcpy(record.reason, "N/A");
-
-        // Get current timestamp
-        time_t now = time(NULL);
-        strftime(record.timestamp, sizeof(record.timestamp), "%Y-%m-%d %H:%M:%S", localtime(&now));
-
-        // Critical Section Start
-        pthread_mutex_lock(&(child_shm_ptr->mutex));
-
-        // Write to shared memory
-        int idx = child_shm_ptr->transaction_count;
-        child_shm_ptr->records[idx] = record;
-        child_shm_ptr->transaction_count++;
-
-        pthread_mutex_unlock(&(child_shm_ptr->mutex));
-        // Critical Section End
-
-        // Detach and exit child process
-        shmdt(child_shm_ptr);
-        exit(0);
-    } else if (pid > 0) {
-        // Parent process waits for child
-        wait(NULL);
-    } else {
-        cerr << "Fork failed!\n";
+void create(const char *accountId, const string& name, double initialBalance, SharedMemorySegment *shm_ptr) {
+    // Check if account already exists
+    double existingBalance = getBalance(accountId, shm_ptr);
+    if (existingBalance >= 0) {
+        // Account already exists
+        printf("Error: Account %s already exists.\n", accountId);
+        recordTransaction("CREATE", accountId, initialBalance, "FAILED", "Account already exists", shm_ptr);
+        return;
     }
+
+    // Create account file
+    char filename[30];
+    snprintf(filename, sizeof(filename), "%s.txt", accountId);
+
+    FILE *file = fopen(filename, "w");
+    if (file == NULL) {
+        printf("Error creating account file: %s\n", filename);
+        recordTransaction("CREATE", accountId, initialBalance, "FAILED", "File creation error", shm_ptr);
+        return;
+    }
+
+    fprintf(file, "%.2lf", initialBalance);
+    fclose(file);
+
+    printf("User %s created with account ID %s and initial balance %.2lf.\n", name.c_str(), accountId, initialBalance);
+
+    // Record success in shared memory
+    recordTransaction("CREATE", accountId, initialBalance, "SUCCESS", "N/A", shm_ptr);
 }
+
 
 
 // Function to check account balance (for testing purposes)
@@ -132,10 +104,19 @@ int main() {
     pthread_mutex_init(&(shm_ptr->mutex), &mutexAttr);
 
 
-    // Tests to check if it works
-    create(1, "Alice", 1000.0, shm_ptr, shm_id);
-    deposit("1", 500.0, shm_ptr);
-    withdraw("1", 200.0, shm_ptr);
+    // Create accounts
+    create("1", "Alice", 1000.0, shm_ptr);
+    create("2", "Bob", 500.0, shm_ptr);
+
+    // Perform transactions
+    deposit("1", 200.0, shm_ptr);
+    withdraw("1", 150.0, shm_ptr);
+    inquiry("1", shm_ptr);
+    transfer("1", 300.0, "2", shm_ptr);
+    inquiry("2", shm_ptr);
+    closeAccount("1", shm_ptr); // Should fail if balance is not zero
+    withdraw("1", 750.0, shm_ptr); // Withdraw remaining balance
+    closeAccount("1", shm_ptr); // Should succeed now
 
 
 
