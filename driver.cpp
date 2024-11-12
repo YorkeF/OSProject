@@ -102,18 +102,18 @@ int main() {
     initializeMonitor(&monitor, shm_ptr);
 
     // Create accounts
-    monitorCreateAccount(&monitor, "1", "Alice", 1000.0);
-    monitorCreateAccount(&monitor, "2", "Bob", 500.0);
+    createAccount(&monitor, "1", "Alice", 1000.0);
+    createAccount(&monitor, "2", "Bob", 500.0);
 
     // Perform transactions
-    monitorDeposit(&monitor, "1", 200.0);
-    monitorWithdraw(&monitor, "1", 150.0);
-    monitorInquiry(&monitor, "1");
-    monitorTransfer(&monitor, "1", 300.0, "2");
-    monitorInquiry(&monitor, "2");
-    monitorCloseAccount(&monitor, "1"); // Should fail if balance is not zero
-    monitorWithdraw(&monitor, "1", 750.0); // Withdraw remaining balance
-    monitorCloseAccount(&monitor, "1"); // Should succeed now
+    deposit(&monitor, "1", 200.0);
+    withdraw(&monitor, "1", 150.0);
+    inquiry(&monitor, "1");
+    transfer(&monitor, "1", 300.0, "2");
+    inquiry(&monitor, "2");
+    closeAccount(&monitor, "1"); // Should fail if balance is not zero
+    withdraw(&monitor, "1", 750.0); // Withdraw remaining balance
+    closeAccount(&monitor, "1"); // Should succeed now
 
 
 
