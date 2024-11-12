@@ -22,13 +22,17 @@ struct User {
     double balance;
 };
 
-void create(const char *accountId, const string& name, double initialBalance, SharedMemorySegment *shm_ptr) {
+void create(const char *accountId, const std::string& name, double initialBalance, BankAccountMonitor *monitor) {
+    // Lock the monitor mutex
+    pthread_mutex_lock(&(monitor->mutex));
+
     // Check if account already exists
-    double existingBalance = getBalance(accountId, shm_ptr);
+    double existingBalance = monitorGetBalance(accountId);
     if (existingBalance >= 0) {
         // Account already exists
         printf("Error: Account %s already exists.\n", accountId);
-        recordTransaction("CREATE", accountId, initialBalance, "FAILED", "Account already exists", shm_ptr);
+        monitorRecordTransaction("CREATE", accountId, initialBalance, "FAILED", "Account already exists", monitor->shm_ptr);
+        pthread_mutex_unlock(&(monitor->mutex));
         return;
     }
 
@@ -36,21 +40,29 @@ void create(const char *accountId, const string& name, double initialBalance, Sh
     char filename[30];
     snprintf(filename, sizeof(filename), "%s.txt", accountId);
 
-    FILE *file = fopen(filename, "w");
-    if (file == NULL) {
+    int fd = open(filename, O_WRONLY | O_CREAT, 0666);
+    if (fd == -1) {
         printf("Error creating account file: %s\n", filename);
-        recordTransaction("CREATE", accountId, initialBalance, "FAILED", "File creation error", shm_ptr);
+        monitorRecordTransaction("CREATE", accountId, initialBalance, "FAILED", "File creation error", monitor->shm_ptr);
+        pthread_mutex_unlock(&(monitor->mutex));
         return;
     }
 
-    fprintf(file, "%.2lf", initialBalance);
-    fclose(file);
+    // Write initial balance
+    char buffer[50];
+    snprintf(buffer, sizeof(buffer), "%.2lf", initialBalance);
+    write(fd, buffer, strlen(buffer));
+    close(fd);
 
     printf("User %s created with account ID %s and initial balance %.2lf.\n", name.c_str(), accountId, initialBalance);
 
     // Record success in shared memory
-    recordTransaction("CREATE", accountId, initialBalance, "SUCCESS", "N/A", shm_ptr);
+    monitorRecordTransaction("CREATE", accountId, initialBalance, "SUCCESS", "N/A", monitor->shm_ptr);
+
+    // Unlock the monitor mutex
+    pthread_mutex_unlock(&(monitor->mutex));
 }
+
 
 
 
