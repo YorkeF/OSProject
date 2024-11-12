@@ -11,13 +11,7 @@
 
 #include "TransactionBlocks.cpp" // Include transaction functions
 #include "SharedMemory.h"
-
-
-
-
-
-
-
+#include "Monitor.h"
 
 using namespace std;
 
@@ -103,20 +97,23 @@ int main() {
     pthread_mutexattr_setpshared(&mutexAttr, PTHREAD_PROCESS_SHARED);
     pthread_mutex_init(&(shm_ptr->mutex), &mutexAttr);
 
+    // Initialize Monitor
+    Monitor monitor;
+    initializeMonitor(&monitor, shm_ptr);
 
     // Create accounts
-    create("1", "Alice", 1000.0, shm_ptr);
-    create("2", "Bob", 500.0, shm_ptr);
+    monitorCreateAccount(&monitor, "1", "Alice", 1000.0);
+    monitorCreateAccount(&monitor, "2", "Bob", 500.0);
 
     // Perform transactions
-    deposit("1", 200.0, shm_ptr);
-    withdraw("1", 150.0, shm_ptr);
-    inquiry("1", shm_ptr);
-    transfer("1", 300.0, "2", shm_ptr);
-    inquiry("2", shm_ptr);
-    closeAccount("1", shm_ptr); // Should fail if balance is not zero
-    withdraw("1", 750.0, shm_ptr); // Withdraw remaining balance
-    closeAccount("1", shm_ptr); // Should succeed now
+    monitorDeposit(&monitor, "1", 200.0);
+    monitorWithdraw(&monitor, "1", 150.0);
+    monitorInquiry(&monitor, "1");
+    monitorTransfer(&monitor, "1", 300.0, "2");
+    monitorInquiry(&monitor, "2");
+    monitorCloseAccount(&monitor, "1"); // Should fail if balance is not zero
+    monitorWithdraw(&monitor, "1", 750.0); // Withdraw remaining balance
+    monitorCloseAccount(&monitor, "1"); // Should succeed now
 
 
 
@@ -136,12 +133,12 @@ int main() {
         cout << "--------------------------\n";
     }
 
+    // Destroy Monitor
+    destroyMonitor(&monitor); 
+    
     // Cleanup
     shmdt(shm_ptr);
     shmctl(shm_id, IPC_RMID, NULL);
-
-
-
 
     return 0;
 }
