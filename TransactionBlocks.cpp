@@ -4,12 +4,15 @@
 #include <ctype.h>
 
 #include "SharedMemory.h"
+#include "Monitor.h"
 
 
-void deposit(const char *accountId, double amount, SharedMemorySegment *shm_ptr);
-void withdraw(const char *accountId, double amount, SharedMemorySegment *shm_ptr);
-void inquiry(const char *accountId, SharedMemorySegment *shm_ptr);
-void transfer(const char *fromAccountId, double amount, const char *toAccountId, SharedMemorySegment *shm_ptr);
+void deposit(Monitor *monitor, const char *accountId, double amount);
+void withdraw(Monitor *monitor, const char *accountId, double amount);
+void inquiry(Monitor *monitor, const char *accountId);
+void transfer(Monitor *monitor, const char *fromAccountId, double amount, const char *toAccountId);
+void closeAccount(Monitor *monitor, const char *accountId);
+void createAccount(Monitor *monitor, const char *accountId);
 
 
 
