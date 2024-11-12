@@ -10,11 +10,11 @@ void withdraw(Monitor *monitor, const char *accountId, double amount);
 void inquiry(Monitor *monitor, const char *accountId);
 void transfer(Monitor *monitor, const char *fromAccountId, double amount, const char *toAccountId);
 void closeAccount(Monitor *monitor, const char *accountId);
-void createAccount(Monitor *monitor, const char *accountId);
+void createAccount(Monitor *monitor, const char *accountId, const char *name, double initialBalance);
 
-void createAccount(Monitor *monitor, const char *accountId, double initialBalance)
+void createAccount(Monitor *monitor, const char *accountId, const char *name, double initialBalance)
 {
-    monitorCreateAccount(monitor, accountId, initialBalance);
+    monitorCreateAccount(monitor, accountId, name, initialBalance);
 }
 
 void closeAccount(Monitor *monitor, const char *accountId)
