@@ -1,87 +1,15 @@
 #include <iostream>
-#include <fstream>
-#include <string>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <unistd.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <stdlib.h>
 #include <pthread.h>
-#include <time.h>
-
-#include "TransactionBlocks.cpp" // Include transaction functions
+#include <cstring>
+#include <cstring>
+#include "TransactionBlocks.h" 
 #include "SharedMemory.h"
 #include "Monitor.h"
 
 using namespace std;
-
-// Structure to represent a User
-struct User {
-    int userId;
-    string name;
-    double balance;
-};
-
-void create(const char *accountId, const std::string& name, double initialBalance, BankAccountMonitor *monitor) {
-    // Lock the monitor mutex
-    pthread_mutex_lock(&(monitor->mutex));
-
-    // Check if account already exists
-    double existingBalance = monitorGetBalance(accountId);
-    if (existingBalance >= 0) {
-        // Account already exists
-        printf("Error: Account %s already exists.\n", accountId);
-        monitorRecordTransaction("CREATE", accountId, initialBalance, "FAILED", "Account already exists", monitor->shm_ptr);
-        pthread_mutex_unlock(&(monitor->mutex));
-        return;
-    }
-
-    // Create account file
-    char filename[30];
-    snprintf(filename, sizeof(filename), "%s.txt", accountId);
-
-    int fd = open(filename, O_WRONLY | O_CREAT, 0666);
-    if (fd == -1) {
-        printf("Error creating account file: %s\n", filename);
-        monitorRecordTransaction("CREATE", accountId, initialBalance, "FAILED", "File creation error", monitor->shm_ptr);
-        pthread_mutex_unlock(&(monitor->mutex));
-        return;
-    }
-
-    // Write initial balance
-    char buffer[50];
-    snprintf(buffer, sizeof(buffer), "%.2lf", initialBalance);
-    write(fd, buffer, strlen(buffer));
-    close(fd);
-
-    printf("User %s created with account ID %s and initial balance %.2lf.\n", name.c_str(), accountId, initialBalance);
-
-    // Record success in shared memory
-    monitorRecordTransaction("CREATE", accountId, initialBalance, "SUCCESS", "N/A", monitor->shm_ptr);
-
-    // Unlock the monitor mutex
-    pthread_mutex_unlock(&(monitor->mutex));
-}
-
-
-
-
-// Function to check account balance (for testing purposes)
-/*
-void inquiry(int userId) {
-    string filename = to_string(userId) + ".txt";
-
-    ifstream accountFile(filename);
-    if (accountFile) {
-        double balance;
-        accountFile >> balance;
-        cout << "User ID: " << userId << ", Balance: $" << balance << "\n";
-        accountFile.close();
-    } else {
-        cerr << "Error reading file for user ID " << userId << ".\n";
-    }
-}
-*/
 
 int main() {
 
@@ -103,11 +31,11 @@ int main() {
     // Initialize shared memory
     shm_ptr->transaction_count = 0;
 
-    // Initialize mutex attributes
-    pthread_mutexattr_t mutexAttr;
-    pthread_mutexattr_init(&mutexAttr);
-    pthread_mutexattr_setpshared(&mutexAttr, PTHREAD_PROCESS_SHARED);
-    pthread_mutex_init(&(shm_ptr->mutex), &mutexAttr);
+    // Initialize shared memory mutex
+    pthread_mutexattr_t shmMutexAttr;
+    pthread_mutexattr_init(&shmMutexAttr);
+    pthread_mutexattr_setpshared(&shmMutexAttr, PTHREAD_PROCESS_SHARED);
+    pthread_mutex_init(&(shm_ptr->mutex), &shmMutexAttr);
 
     // Initialize Monitor
     Monitor monitor;
@@ -127,8 +55,6 @@ int main() {
     withdraw(&monitor, "1", 750.0); // Withdraw remaining balance
     closeAccount(&monitor, "1"); // Should succeed now
 
-
-
     // Read and display the transaction records
     cout << "\n--------------------------\nTransaction Records:\n";
     for (int i = 0; i < shm_ptr->transaction_count; i++) {
@@ -146,11 +72,12 @@ int main() {
     }
 
     // Destroy Monitor
-    destroyMonitor(&monitor); 
-    
+    destroyMonitor(&monitor);
+
     // Cleanup
     shmdt(shm_ptr);
     shmctl(shm_id, IPC_RMID, NULL);
 
     return 0;
 }
+
