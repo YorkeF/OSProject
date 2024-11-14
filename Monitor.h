@@ -26,6 +26,6 @@ void monitorCloseAccount(Monitor *monitor, const char *accountId);
 // Helper functions
 double monitorGetBalance(Monitor *monitor, const char *accountId);
 void monitorUpdateBalance(Monitor *monitor, const char *accountId, double newBalance);
-void monitorRecordTransaction(Monitor *monitor, const char *type, const char *accountId, double amount, const char *status, const char *reason, const char *recipientAccountId);
+void monitorRecordTransaction(Monitor *monitor, const char *type, const char *accountId, double amount, const char *status, const char *reason, const char *recipientAccountId = NULL);
 
 #endif 
