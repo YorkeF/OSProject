@@ -2,9 +2,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/file.h>
+#include <time.h>
 
 // Initialize the monitor
 void initializeMonitor(Monitor *monitor, SharedMemorySegment *shm_ptr) 
@@ -30,6 +31,7 @@ double monitorGetBalance(Monitor *monitor, const char *accountId)
     snprintf(filename, sizeof(filename), "%s.txt", accountId);
 
     int fd = open(filename, O_RDONLY);
+
     if (fd == -1) 
     {
         printf("Error reading account file: %s\n", filename);
@@ -37,8 +39,7 @@ double monitorGetBalance(Monitor *monitor, const char *accountId)
     }
 
     // Lock the file for reading
-    if (flock(fd, LOCK_SH) == -1) 
-    {
+    if (flock(fd, LOCK_SH) == -1) {
         printf("Error locking the file for reading.\n");
         close(fd);
         return -1;
@@ -73,7 +74,8 @@ void monitorUpdateBalance(Monitor *monitor, const char *accountId, double newBal
 
     int fd = open(filename, O_WRONLY);
 
-    if (fd == -1) {
+    if (fd == -1) 
+    {
         printf("Error updating the file.\n");
         return;
     }
@@ -105,7 +107,7 @@ void monitorUpdateBalance(Monitor *monitor, const char *accountId, double newBal
 }
 
 // Helper function to record transactions
-void monitorRecordTransaction(Monitor *monitor, const char *type, const char *accountId, double amount, const char *status, const char *reason, const char *recipientAccountId = NULL) 
+void monitorRecordTransaction(Monitor *monitor, const char *type, const char *accountId, double amount, const char *status, const char *reason, const char *recipientAccountId) 
 {
     TransactionRecord record;
     strcpy(record.transaction_type, type);
@@ -133,8 +135,16 @@ void monitorRecordTransaction(Monitor *monitor, const char *type, const char *ac
 
     // Write to shared memory
     int idx = monitor->shm_ptr->transaction_count;
-    monitor->shm_ptr->records[idx] = record;
-    monitor->shm_ptr->transaction_count++;
+
+    if (idx < MAX_TRANSACTIONS) 
+    {
+        monitor->shm_ptr->records[idx] = record;
+        monitor->shm_ptr->transaction_count++;
+    } 
+    else 
+    {
+        printf("Transaction record limit reached.\n");
+    }
 
     pthread_mutex_unlock(&(monitor->shm_ptr->mutex));
     // Critical Section End
@@ -152,7 +162,7 @@ void monitorCreateAccount(Monitor *monitor, const char *accountId, const char *n
     {
         // Account already exists
         printf("Error: Account %s already exists.\n", accountId);
-        monitorRecordTransaction(monitor, "CREATE", accountId, initialBalance, "FAILED", "Account already exists");
+        monitorRecordTransaction(monitor, "CREATE", accountId, initialBalance, "FAILED", "Account already exists", NULL);
         pthread_mutex_unlock(&(monitor->mutex));
         return;
     }
@@ -166,7 +176,7 @@ void monitorCreateAccount(Monitor *monitor, const char *accountId, const char *n
     if (fd == -1) 
     {
         printf("Error creating account file: %s\n", filename);
-        monitorRecordTransaction(monitor, "CREATE", accountId, initialBalance, "FAILED", "File creation error");
+        monitorRecordTransaction(monitor, "CREATE", accountId, initialBalance, "FAILED", "File creation error", NULL);
         pthread_mutex_unlock(&(monitor->mutex));
         return;
     }
@@ -179,8 +189,8 @@ void monitorCreateAccount(Monitor *monitor, const char *accountId, const char *n
 
     printf("User %s created with account ID %s and initial balance %.2lf.\n", name, accountId, initialBalance);
 
-    // Record in shared memory
-    monitorRecordTransaction(monitor, "CREATE", accountId, initialBalance, "SUCCESS", "N/A");
+    // Record success in shared memory
+    monitorRecordTransaction(monitor, "CREATE", accountId, initialBalance, "SUCCESS", "N/A", NULL);
 
     pthread_mutex_unlock(&(monitor->mutex));
 }
@@ -195,14 +205,14 @@ void monitorDeposit(Monitor *monitor, const char *accountId, double amount)
     {
         // Account does not exist
         printf("Error: Account %s not found.\n", accountId);
-        monitorRecordTransaction(monitor, "DEPOSIT", accountId, amount, "FAILED", "Account not found");
+        monitorRecordTransaction(monitor, "DEPOSIT", accountId, amount, "FAILED", "Account not found", NULL);
     } 
     else 
     {
         balance += amount;
         monitorUpdateBalance(monitor, accountId, balance);
         printf("Deposit successful. New balance: %.2lf\n", balance);
-        monitorRecordTransaction(monitor, "DEPOSIT", accountId, amount, "SUCCESS", "N/A");
+        monitorRecordTransaction(monitor, "DEPOSIT", accountId, amount, "SUCCESS", "N/A", NULL);
     }
 
     pthread_mutex_unlock(&(monitor->mutex));
@@ -218,20 +228,20 @@ void monitorWithdraw(Monitor *monitor, const char *accountId, double amount)
     {
         // Account does not exist
         printf("Error: Account %s not found.\n", accountId);
-        monitorRecordTransaction(monitor, "WITHDRAW", accountId, amount, "FAILED", "Account not found");
+        monitorRecordTransaction(monitor, "WITHDRAW", accountId, amount, "FAILED", "Account not found", NULL);
     } 
     else if (amount > balance) 
     {
         // Insufficient funds
         printf("Insufficient funds in account %s. Current balance: %.2lf\n", accountId, balance);
-        monitorRecordTransaction(monitor, "WITHDRAW", accountId, amount, "FAILED", "Insufficient funds");
+        monitorRecordTransaction(monitor, "WITHDRAW", accountId, amount, "FAILED", "Insufficient funds", NULL);
     } 
     else 
     {
         balance -= amount;
         monitorUpdateBalance(monitor, accountId, balance);
         printf("Withdrawal successful. New balance: %.2lf\n", balance);
-        monitorRecordTransaction(monitor, "WITHDRAW", accountId, amount, "SUCCESS", "N/A");
+        monitorRecordTransaction(monitor, "WITHDRAW", accountId, amount, "SUCCESS", "N/A", NULL);
     }
 
     pthread_mutex_unlock(&(monitor->mutex));
@@ -247,12 +257,12 @@ void monitorInquiry(Monitor *monitor, const char *accountId)
     {
         // Account does not exist
         printf("Error: Account %s not found.\n", accountId);
-        monitorRecordTransaction(monitor, "INQUIRY", accountId, 0.0, "FAILED", "Account not found");
+        monitorRecordTransaction(monitor, "INQUIRY", accountId, 0.0, "FAILED", "Account not found", NULL);
     } 
     else 
     {
         printf("Account %s balance: %.2lf\n", accountId, balance);
-        monitorRecordTransaction(monitor, "INQUIRY", accountId, 0.0, "SUCCESS", "N/A");
+        monitorRecordTransaction(monitor, "INQUIRY", accountId, 0.0, "SUCCESS", "N/A", NULL);
     }
 
     pthread_mutex_unlock(&(monitor->mutex));
@@ -292,7 +302,7 @@ void monitorTransfer(Monitor *monitor, const char *fromAccountId, double amount,
         printf("New balance for %s: %.2lf\n", fromAccountId, fromBalance);
         printf("New balance for %s: %.2lf\n", toAccountId, toBalance);
 
-        // Record in shared memory
+        // Record success in shared memory
         monitorRecordTransaction(monitor, "TRANSFER", fromAccountId, amount, "SUCCESS", "N/A", toAccountId);
     }
 
@@ -309,13 +319,13 @@ void monitorCloseAccount(Monitor *monitor, const char *accountId)
     {
         // Account does not exist
         printf("Error: Account %s not found.\n", accountId);
-        monitorRecordTransaction(monitor, "CLOSE", accountId, 0.0, "FAILED", "Account not found");
+        monitorRecordTransaction(monitor, "CLOSE", accountId, 0.0, "FAILED", "Account not found", NULL);
     } 
     else if (balance != 0.0) 
     {
         // Account balance is not zero
         printf("Cannot close account %s. Balance is not zero: %.2lf\n", accountId, balance);
-        monitorRecordTransaction(monitor, "CLOSE", accountId, 0.0, "FAILED", "Balance not zero");
+        monitorRecordTransaction(monitor, "CLOSE", accountId, 0.0, "FAILED", "Balance not zero", NULL);
     } 
     else 
     {
@@ -326,15 +336,14 @@ void monitorCloseAccount(Monitor *monitor, const char *accountId)
         if (remove(filename) == 0) 
         {
             printf("Account %s closed successfully.\n", accountId);
-            monitorRecordTransaction(monitor, "CLOSE", accountId, 0.0, "SUCCESS", "N/A");
+            monitorRecordTransaction(monitor, "CLOSE", accountId, 0.0, "SUCCESS", "N/A", NULL);
         } 
         else 
         {
             printf("Error closing account %s.\n", accountId);
-            monitorRecordTransaction(monitor, "CLOSE", accountId, 0.0, "FAILED", "Error deleting file");
+            monitorRecordTransaction(monitor, "CLOSE", accountId, 0.0, "FAILED", "Error deleting file", NULL);
         }
     }
 
     pthread_mutex_unlock(&(monitor->mutex));
 }
-
