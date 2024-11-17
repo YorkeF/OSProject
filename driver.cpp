@@ -15,7 +15,7 @@
 
 using namespace std;
 
-// Normalize a string to uppercase for consistent processing
+// string to uppercase
 string toUpperCase(const string &str) {
     string result = str;
     transform(result.begin(), result.end(), result.begin(),
