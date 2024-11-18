@@ -6,9 +6,10 @@
 #include <unistd.h>
 #include <sys/file.h>
 #include <time.h>
+#include <errno.h>  // Include errno header
 
 // Initialize the monitor
-void initializeMonitor(Monitor *monitor, SharedMemorySegment *shm_ptr) 
+void initializeMonitor(Monitor *monitor, SharedMemorySegment *shm_ptr)
 {
     pthread_mutexattr_t mutexAttr;
     pthread_mutexattr_init(&mutexAttr);
@@ -19,22 +20,27 @@ void initializeMonitor(Monitor *monitor, SharedMemorySegment *shm_ptr)
 }
 
 // Destroy the monitor
-void destroyMonitor(Monitor *monitor) 
+void destroyMonitor(Monitor *monitor)
 {
     pthread_mutex_destroy(&(monitor->mutex));
 }
 
 // Helper function to get balance
-double monitorGetBalance(Monitor *monitor, const char *accountId) 
+
+
+double monitorGetBalance(Monitor *monitor, const char *accountId)
 {
     char filename[30];
     snprintf(filename, sizeof(filename), "%s.txt", accountId);
 
     int fd = open(filename, O_RDONLY);
 
-    if (fd == -1) 
+    if (fd == -1)
     {
-        printf("Error reading account file: %s\n", filename);
+        if (errno != ENOENT) // Check if the error is not 'File Not Found'
+        {
+            printf("Error reading account file: %s\n", filename);
+        }
         return -1;
     }
 
