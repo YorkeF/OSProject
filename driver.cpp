@@ -1,4 +1,9 @@
-// driver.cpp
+/**
+ * Group I
+ * Brogan Williams
+ * brogan.williams@okstate.edu
+ * 11/20/2024
+ */
 
 #include <iostream>
 #include <fstream>
@@ -12,13 +17,17 @@
 #include <pthread.h>
 #include "monitor.h"
 #include "sharedmemory.h"
-#include "monitor_init_and_queue.cpp"    // Include the monitor initialization and queue functions
-#include "monitor_helpers.cpp"           // Include the monitor helper functions
-#include "monitor_transactions.cpp"      // Include the transaction functions
-
+#include "monitor_init_and_queue.cpp"
+#include "monitor_helpers.cpp"
+#include "monitor_transactions.cpp"
 using namespace std;
 
-// String to uppercase function
+/**
+ * @brief Converts a string to uppercase.
+ *
+ * @param str The input string.
+ * @return A new string with all characters converted to uppercase.
+ */
 string toUpperCase(const string &str) {
     string result = str;
     transform(result.begin(), result.end(), result.begin(),
@@ -26,6 +35,13 @@ string toUpperCase(const string &str) {
     return result;
 }
 
+/**
+ * @brief Entry point of the application. Reads input commands, processes transactions, and manages shared memory.
+ *
+ * @param argc The number of command-line arguments.
+ * @param argv An array of command-line arguments. The second argument should specify the input file path.
+ * @return 0 on successful execution, or an error code for failure.
+ */
 int main(int argc, char *argv[]) {
     if (argc != 2) {
         cerr << "Usage: " << argv[0] << " <input_file>" << endl;
