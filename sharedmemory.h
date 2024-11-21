@@ -1,4 +1,9 @@
-// sharedmemory.h
+/**
+* Group I
+ * Yorke Ferrell
+ * yorke.ferrell@okstate.edu
+ * 11/20/2024
+ */
 
 #ifndef SHAREDMEMORY_H
 #define SHAREDMEMORY_H

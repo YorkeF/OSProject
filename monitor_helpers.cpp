@@ -1,4 +1,9 @@
-// monitor_helpers.cpp
+/**
+* Group I
+ * Yorke Ferrell
+ * yorke.ferrell@okstate.edu
+ * 11/20/2024
+ */
 
 #include "monitor.h"
 #include <iostream>
@@ -12,7 +17,12 @@
 
 using namespace std;
 
-// Helper function to get mutex index for an account
+/**
+ * @brief Computes the mutex index for a given account ID.
+ *
+ * @param accountId The account ID as a string.
+ * @return The mutex index derived from the account ID.
+ */
 int getAccountMutexIndex(const char *accountId) {
     // Simple hash function to map account ID to mutex index
     int index = 0;
@@ -22,7 +32,13 @@ int getAccountMutexIndex(const char *accountId) {
     return index % MAX_ACCOUNTS;
 }
 
-// Helper function to get balance
+/**
+ * @brief Retrieves the balance of an account.
+ *
+ * @param monitor Pointer to the monitor structure.
+ * @param accountId The account ID as a string.
+ * @return The account balance, or -1 if the account does not exist or an error occurs.
+ */
 double monitorGetBalance(Monitor *monitor, const char *accountId) {
     char filename[30];
     snprintf(filename, sizeof(filename), "%s.txt", accountId);
@@ -64,7 +80,13 @@ double monitorGetBalance(Monitor *monitor, const char *accountId) {
     return balance;
 }
 
-// Helper function to update balance
+/**
+ * @brief Updates the balance of an account.
+ *
+ * @param monitor Pointer to the monitor structure.
+ * @param accountId The account ID as a string.
+ * @param newBalance The new balance to set for the account.
+ */
 void monitorUpdateBalance(Monitor *monitor, const char *accountId, double newBalance) {
     char filename[30];
     snprintf(filename, sizeof(filename), "%s.txt", accountId);
@@ -100,7 +122,17 @@ void monitorUpdateBalance(Monitor *monitor, const char *accountId, double newBal
     close(fd);
 }
 
-// Helper function to record transactions
+/**
+ * @brief Records a transaction in shared memory.
+ *
+ * @param monitor Pointer to the monitor structure.
+ * @param type The type of transaction (e.g., "DEPOSIT", "WITHDRAW").
+ * @param accountId The account ID associated with the transaction.
+ * @param amount The transaction amount.
+ * @param status The status of the transaction (e.g., "SUCCESS", "FAILED").
+ * @param reason A descriptive reason for the transaction status.
+ * @param recipientAccountId (Optional) The recipient account ID for transactions like "TRANSFER".
+ */
 void monitorRecordTransaction(Monitor *monitor, const char *type, const char *accountId, double amount, const char *status, const char *reason, const char *recipientAccountId) {
     TransactionRecord record;
     strcpy(record.transaction_type, type);
