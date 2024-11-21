@@ -1,4 +1,9 @@
-// monitor.h
+/**
+* Group I
+ * Cole Dunn
+ * cole.dunn@okstate.edu
+ * 11/20/2024
+ */
 
 #ifndef MONITOR_H
 #define MONITOR_H

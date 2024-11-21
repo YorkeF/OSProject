@@ -1,4 +1,10 @@
-// monitor_init_and_queue.cpp
+/**
+* Group I
+ * Cole Dunn
+ * cole.dunn@okstate.edu
+ * 11/20/2024
+ */
+
 
 #include "monitor.h"
 #include <iostream>
@@ -10,7 +16,14 @@
 
 using namespace std;
 
-// Initialize the monitor
+
+
+/**
+ * @brief Initializes the monitor and its synchronization primitives.
+ *
+ * @param monitor Pointer to the monitor structure to initialize.
+ * @param shm_ptr Pointer to the shared memory segment.
+ */
 void initializeMonitor(Monitor *monitor, SharedMemorySegment *shm_ptr) {
     pthread_mutexattr_t mutexAttr;
     pthread_mutexattr_init(&mutexAttr);
@@ -30,7 +43,11 @@ void initializeMonitor(Monitor *monitor, SharedMemorySegment *shm_ptr) {
     monitor->shm_ptr = shm_ptr;
 }
 
-// Destroy the monitor
+/**
+ * @brief Destroys the monitor and cleans up synchronization primitives.
+ *
+ * @param monitor Pointer to the monitor structure to destroy.
+ */
 void destroyMonitor(Monitor *monitor) {
     pthread_mutex_destroy(&(monitor->mutex));
     pthread_cond_destroy(&(monitor->cond));
@@ -39,7 +56,13 @@ void destroyMonitor(Monitor *monitor) {
     }
 }
 
-// Function to enter the monitor (enqueue)
+/**
+ * @brief Enters the monitor by adding the process to the queue.
+ *
+ * The process will block until it is the first in the queue.
+ *
+ * @param monitor Pointer to the monitor structure.
+ */
 void enterMonitor(Monitor *monitor) {
     pthread_mutex_lock(&(monitor->mutex));
     pid_t pid = getpid();
@@ -51,7 +74,11 @@ void enterMonitor(Monitor *monitor) {
     pthread_mutex_unlock(&(monitor->mutex));
 }
 
-// Function to exit the monitor (dequeue)
+/**
+ * @brief Exits the monitor by removing the process from the queue.
+ *
+ * @param monitor Pointer to the monitor structure.
+ */
 void exitMonitor(Monitor *monitor) {
     pthread_mutex_lock(&(monitor->mutex));
     pid_t pid = getpid();
@@ -62,7 +89,11 @@ void exitMonitor(Monitor *monitor) {
     pthread_mutex_unlock(&(monitor->mutex));
 }
 
-// Function to display the processes in queue
+/**
+ * @brief Displays the current queue of processes in the monitor.
+ *
+ * @param monitor Pointer to the monitor structure.
+ */
 void displayProcessQueue(Monitor *monitor) {
     pthread_mutex_lock(&(monitor->mutex));
     queue<pid_t> tempQueue = monitor->process_queue;
