@@ -1,4 +1,9 @@
-// monitor_transactions.cpp
+/**
+* Group I
+ * Emily Cardenas
+ * emily.cardenas@okstate.edu
+ * 11/20/2024
+ */
 
 #include "monitor.h"
 #include <iostream>
@@ -7,7 +12,14 @@
 
 using namespace std;
 
-// Transaction functions
+/**
+ * @brief Creates a new account with the given ID, name, and initial balance.
+ *
+ * @param monitor Pointer to the monitor structure.
+ * @param accountId The ID of the account to create.
+ * @param name The name of the account holder.
+ * @param initialBalance The initial balance for the account.
+ */
 void createAccount(Monitor *monitor, const char *accountId, const char *name, double initialBalance) {
     enterMonitor(monitor);
 
@@ -55,6 +67,15 @@ void createAccount(Monitor *monitor, const char *accountId, const char *name, do
     exitMonitor(monitor);
 }
 
+
+/**
+ * @brief Deposits an amount into the specified account.
+ *
+ * @param monitor Pointer to the monitor structure.
+ * @param accountId The ID of the account to deposit into.
+ * @param amount The amount to deposit.
+ */
+
 void deposit(Monitor *monitor, const char *accountId, double amount) {
     enterMonitor(monitor);
 
@@ -78,6 +99,15 @@ void deposit(Monitor *monitor, const char *accountId, double amount) {
     exitMonitor(monitor);
 }
 
+
+
+/**
+ * @brief Withdraws an amount from the specified account.
+ *
+ * @param monitor Pointer to the monitor structure.
+ * @param accountId The ID of the account to withdraw from.
+ * @param amount The amount to withdraw.
+ */
 void withdraw(Monitor *monitor, const char *accountId, double amount) {
     enterMonitor(monitor);
 
@@ -105,6 +135,16 @@ void withdraw(Monitor *monitor, const char *accountId, double amount) {
     exitMonitor(monitor);
 }
 
+
+
+/**
+ * @brief Transfers an amount from one account to another.
+ *
+ * @param monitor Pointer to the monitor structure.
+ * @param fromAccountId The ID of the account to transfer from.
+ * @param amount The amount to transfer.
+ * @param toAccountId The ID of the account to transfer to.
+ */
 void inquiry(Monitor *monitor, const char *accountId) {
     enterMonitor(monitor);
 
@@ -126,6 +166,12 @@ void inquiry(Monitor *monitor, const char *accountId) {
     exitMonitor(monitor);
 }
 
+/**
+ * @brief Closes the specified account if its balance is zero.
+ *
+ * @param monitor Pointer to the monitor structure.
+ * @param accountId The ID of the account to close.
+ */
 void transfer(Monitor *monitor, const char *fromAccountId, double amount, const char *toAccountId) {
     enterMonitor(monitor);
 
