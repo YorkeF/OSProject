@@ -1,0 +1,9 @@
+Bob Create 500
+Alice Create 1000
+Bob Deposit 100
+Bob Inquiry
+Alice Deposit 10
+Alice Transfer 40 Bob
+Alice Inquiry
+Bob Inquiry
+Bob Close
